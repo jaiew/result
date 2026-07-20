@@ -1,6 +1,9 @@
 {
   "name": "@jaiew/result",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "A type-safe Result pattern implementation for explicit success and error state handling.",
   "type": "module",
   "main": "./dist/index.cjs",
