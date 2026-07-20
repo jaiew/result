@@ -2,6 +2,9 @@
 [![CI](https://github.com/jaiew/result/actions/workflows/ci.yml/badge.svg)](https://github.com/jaiew/result/actions)
 [![codecov](https://codecov.io/github/jaiew/result/graph/badge.svg?token=WKIEAM7IS2)](https://codecov.io/github/jaiew/result)
 [![npm version](https://img.shields.io/npm/v/@jaiew/result.svg)](https://www.npmjs.com/package/@jaiew/result)
+[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-blue?logo=dependabot&logoColor=white)](https://github.com/jaiew/result/blob/main/.github/dependabot.yml)
+[![Security Scan (CodeQL)](https://github.com/jaiew/result/actions/workflows/codeql.yml/badge.svg)](https://github.com/jaiew/result/actions/workflows/codeql.yml)
+[![CodeRabbit AI](https://img.shields.io/badge/CodeRabbit-Reviewed-ff570a?logo=coderabbit&logoColor=white)](https://coderabbit.ai)
 
 A zero-dependency, type-safe implementation of the **Result Pattern** for TypeScript. It provides an elegant, explicit alternative to throwing exceptions, allowing you to narrow and handle success and error states gracefully.
 

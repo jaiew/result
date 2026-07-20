@@ -37,6 +37,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Upload to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

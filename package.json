@@ -47,12 +47,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/result-lib.git"
+    "url": "git+https://github.com/jaiew/result.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/result-lib/issues"
+    "url": "https://github.com/jaiew/result/issues"
   },
-  "homepage": "https://github.com/your-username/result-lib#readme",
+  "homepage": "https://github.com/jaiew/result#readme",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
