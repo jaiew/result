@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+
+reviews:
+  trigger: "pull_request"
+  profile: "assertive"
+  high_level_summary: true
+  poem: false
+  request_changes_workflow: true
+
+  auto_review:
+    enabled: true
+    drafts: true
+    ignore_usernames:
+      - "dependabot[bot]"
+      - "github-actions[bot]"
+
+  eslint:
+    enabled: true
+    use_repo_config: true
+
+  path_filters:
+    - "!dist/**"         # Do not review compiled build files
+    - "!coverage/**"     # Do not review test coverage reports
+    - "!node_modules/**" # Ignore dependencies
+    - "!package-lock.json"
+
+  typescript:
+    enabled: true
+    target_strictness: "high"
+    enforce_no_any: true
+    enforce_strict_null_checks: true
+    prefer_async_await: true
+
+  thresholds:
+    skip_on_docs_only: true
+
+  style:
+    tone: "professional"
+    focus:
+      - "bugs"
+      - "security"
+      - "maintainability"
+      - "readability"
