@@ -1,4 +1,7 @@
-# @jaiew/result
+# @jaiew/result 
+[![CI](https://github.com/jaiew/result/actions/workflows/ci.yml/badge.svg)](https://github.com/jaiew/result/actions)
+[![codecov](https://codecov.io/github/jaiew/result/graph/badge.svg?token=WKIEAM7IS2)](https://codecov.io/github/jaiew/result)
+[![npm version](https://img.shields.io/npm/v/@jaiew/result.svg)](https://www.npmjs.com/package/@jaiew/result)
 
 A zero-dependency, type-safe implementation of the **Result Pattern** for TypeScript. It provides an elegant, explicit alternative to throwing exceptions, allowing you to narrow and handle success and error states gracefully.
 
