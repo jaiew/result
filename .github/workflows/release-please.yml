@@ -6,9 +6,9 @@ on:
       - main
 
 permissions:
-  contents: write       # Allows Release Please to create tags and commits
-  pull-requests: write  # Allows Release Please to create and update the Release PR
-  id-token: write       # Allows npm Trusted Publishing (OIDC)
+  contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
   release-please:
@@ -16,32 +16,6 @@ jobs:
     steps:
       - name: Run Release Please
         id: release
-        uses: google-github-actions/release-please-action@v4
+        uses: googleapis/release-please-action@v5
         with:
-          # Tells Release Please to look for a package.json and follow Node/npm conventions
           release-type: node
-
-      # ------------------------------------------------------------------
-      # The steps below will ONLY execute if a Release PR was just merged.
-      # ------------------------------------------------------------------
-
-      - name: Checkout Repository
-        if: ${{ steps.release.outputs.release_created }}
-        uses: actions/checkout@v5
-
-      - name: Initialize Node Runtime
-        if: ${{ steps.release.outputs.release_created }}
-        uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'npm'
-
-      - name: Install Dependencies
-        if: ${{ steps.release.outputs.release_created }}
-        run: npm ci
-
-      - name: Publish to npm
-        if: ${{ steps.release.outputs.release_created }}
-        # Automatically utilizes OIDC for authentication based on id-token permission
-        run: npm publish --access public
