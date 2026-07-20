@@ -36,7 +36,7 @@ describe('Result Utility Library Suite', () => {
       const errorRes = createError('failed').mapError((err) => err.toUpperCase())
       expect(errorRes.error).toBe('FAILED')
 
-      const successRes = createSuccess<number>(10).mapError((err: never) => 'new error')
+      const successRes = createSuccess<number>(10).mapError((_err: never) => 'new error')
       expect(successRes.unwrap()).toBe(10)
     })
 
@@ -105,10 +105,10 @@ describe('Result Utility Library Suite', () => {
 
       const mappedUnsafeFn = Result.fromThrowable(
         () => JSON.parse('{invalid json}'),
-        (e) => new Error('Custom Parse Error')
+        (_e) => new Error('Custom Parse Error')
       )
       expect(mappedUnsafeFn.isError()).toBe(true)
-      expect(mappedUnsafeFn.unwrapOrElse((err: any) => err.message)).toBe('Custom Parse Error')
+      expect(mappedUnsafeFn.unwrapOrElse((err: Error) => err.message)).toBe('Custom Parse Error')
     })
 
     it('should wrap resolving and rejecting promises via fromPromise', async () => {
