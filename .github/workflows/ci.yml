@@ -35,3 +35,9 @@ jobs:
 
       - name: Unit tests with Coverage
         run: npm run test:coverage
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
