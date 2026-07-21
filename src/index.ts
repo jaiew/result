@@ -35,8 +35,8 @@
  * @example
  * ```typescript
  * const success = createSuccess({ id: 1, name: 'John' });
- * console.log(success.value.name); // 'John'
  * console.log(success.isSuccess()); // true
+ * console.log(success.value.name); // 'John'
  * ```
  */
 export class SuccessResult<T> {
@@ -139,6 +139,71 @@ export class SuccessResult<T> {
   }
 
   /**
+   * Transforms the contained success value with an asynchronous function.
+   *
+   * @template U - The return type of the async transformation function
+   * @param fn - Async function to apply to the success value
+   * @returns A promise resolving to a new `SuccessResult` with the mapped value
+   *
+   * @example
+   * ```typescript
+   * const result = createSuccess(2);
+   * const asyncResult = await result.mapAsync(async val => val * 2); // SuccessResult(4)
+   * ```
+   */
+  async mapAsync<U>(fn: (value: T) => Promise<U>): Promise<SuccessResult<U>> {
+    const newValue = await fn(this.value)
+    return createSuccess(newValue)
+  }
+
+  /**
+   * Chains an asynchronous operation that returns a `Result`.
+   *
+   * @template U - The success type of the returned Result promise
+   * @template E2 - The error type of the returned Result promise
+   * @param fn - Async function returning a `SuccessOrError`
+   * @returns A promise resolving to the resulting `SuccessOrError`
+   *
+   * @example
+   * ```typescript
+   * const result = createSuccess("user_123");
+   * const user = await result.flatMapAsync(async id => fetchUserAsync(id));
+   * ```
+   */
+  async flatMapAsync<U, E2>(
+    fn: (value: T) => Promise<SuccessOrError<U, E2>>
+  ): Promise<SuccessOrError<U, E2>> {
+    return await fn(this.value)
+  }
+
+  /**
+   * Evaluates a predicate against the success value. Converts to an `ErrorResult` if the predicate returns false.
+   *
+   * @template E2 - The type of the error produced if validation fails
+   * @param predicate - Function returning true to keep success, or false to convert to error
+   * @param errorFactory - Function producing the error value if predicate returns false
+   * @returns The current `SuccessResult` if predicate is true, or a new `ErrorResult` if false
+   *
+   * @example
+   * ```typescript
+   * const result = createSuccess(15);
+   * const valid = result.filter(
+   *   val => val >= 18,
+   *   val => `Age ${val} is under 18`
+   * ); // ErrorResult("Age 15 is under 18")
+   * ```
+   */
+  filter<E2>(
+    predicate: (value: T) => boolean,
+    errorFactory: (value: T) => E2
+  ): SuccessOrError<T, E2> {
+    if (!predicate(this.value)) {
+      return createError(errorFactory(this.value))
+    }
+    return this
+  }
+
+  /**
    * Pattern matches on the result, calling the appropriate function.
    *
    * @template U - The return type of both match functions
@@ -208,6 +273,57 @@ export class SuccessResult<T> {
    * ```
    */
   unwrapOrElse<U>(_fn: (error: never) => U): T {
+    return this.value
+  }
+
+  /**
+   * Executes a side-effect callback with the success value without modifying the result.
+   *
+   * @param fn - Function to execute with the success value
+   * @returns The current `SuccessResult` instance
+   *
+   * @example
+   * ```typescript
+   * const result = createSuccess(42);
+   * result.inspect(value => console.log(value)); // logs 42
+   * ```
+   */
+  inspect(fn: (value: T) => void): this {
+    fn(this.value)
+    return this
+  }
+
+  /**
+   * No-op on `SuccessResult`. Does not execute the callback.
+   *
+   * @template E - The potential error type
+   * @param _fn - Function to execute with the error (not called for success)
+   * @returns The current `SuccessResult` instance
+   *
+   * @example
+   * ```typescript
+   * const result = createSuccess(42);
+   * result.inspectError(err => console.error(err)); // does nothing
+   * ```
+   */
+  inspectError<E = never>(_fn: (error: E) => void): this {
+    return this
+  }
+
+  /**
+   * Enables generator integration for `Result.gen`. Yields nothing and returns the success value.
+   *
+   * @template E - The potential error type
+   * @returns The contained success value directly
+   *
+   * @example
+   * ```typescript
+   * const result = createSuccess(42);
+   * const val = yield* result; // 42
+   * ```
+   */
+  // eslint-disable-next-line require-yield
+  *[Symbol.iterator](): Generator<never, T, unknown> {
     return this.value
   }
 }
@@ -325,6 +441,68 @@ export class ErrorResult<E> {
   }
 
   /**
+   * No-op on `ErrorResult`. Does not execute the async mapping function.
+   *
+   * @template U - The potential transformed value type
+   * @param _fn - Async function (not called for error)
+   * @returns A promise resolving to the current `ErrorResult` instance
+   *
+   * @example
+   * ```typescript
+   * const result = createError("network error");
+   * const mapped = await result.mapAsync(async val => val * 2); // ErrorResult("network error")
+   * ```
+   */
+  async mapAsync<U = never>(_fn: (value: never) => Promise<U>): Promise<ErrorResult<E>> {
+    return this
+  }
+
+  /**
+   * No-op on `ErrorResult`. Does not execute the async flatMap function.
+   *
+   * @template U - The potential success type of the return Result
+   * @template E2 - The potential error type of the return Result
+   * @param _fn - Async flatMap function (not called for error)
+   * @returns A promise resolving to the current `ErrorResult` instance
+   *
+   * @example
+   * ```typescript
+   * const result = createError("network error");
+   * const flatMapped = await result.flatMapAsync(async id => fetchUserAsync(id)); // ErrorResult("network error")
+   * ```
+   */
+  async flatMapAsync<U = never, E2 = never>(
+    _fn: (value: never) => Promise<SuccessOrError<U, E2>>
+  ): Promise<ErrorResult<E>> {
+    return this
+  }
+
+  /**
+   * No-op on `ErrorResult`. Does not evaluate the predicate.
+   *
+   * @template T - The potential success type
+   * @template E2 - The potential new error type
+   * @param _predicate - Predicate function (not called for error)
+   * @param _errorFactory - Error factory function (not called for error)
+   * @returns The current `ErrorResult` instance
+   *
+   * @example
+   * ```typescript
+   * const result = createError("initial error");
+   * const filtered = result.filter(
+   *   val => val > 0,
+   *   () => "invalid"
+   * ); // ErrorResult("initial error")
+   * ```
+   */
+  filter<T = never, E2 = never>(
+    _predicate: (value: T) => boolean,
+    _errorFactory: (value: T) => E2
+  ): ErrorResult<E> {
+    return this
+  }
+
+  /**
    * Pattern matches on the result, calling the appropriate function.
    *
    * @template U - The return type of both match functions
@@ -396,6 +574,58 @@ export class ErrorResult<E> {
    */
   unwrapOrElse<U>(fn: (error: E) => U): U {
     return fn(this.error)
+  }
+
+  /**
+   * No-op on `ErrorResult`. Does not execute the callback.
+   *
+   * @template T - The potential success type
+   * @param _fn - Function to execute with the value (not called for error)
+   * @returns The current `ErrorResult` instance
+   *
+   * @example
+   * ```typescript
+   * const result = createError("failed");
+   * result.inspect(value => console.log(value)); // does nothing
+   * ```
+   */
+  inspect<T = never>(_fn: (value: T) => void): this {
+    return this
+  }
+
+  /**
+   * Executes a side-effect callback with the error without modifying the result.
+   *
+   * @param fn - Function to execute with the error value
+   * @returns The current `ErrorResult` instance
+   *
+   * @example
+   * ```typescript
+   * const result = createError("failed");
+   * result.inspectError(err => console.error(err)); // logs "failed"
+   * ```
+   */
+  inspectError(fn: (error: E) => void): this {
+    fn(this.error)
+    return this
+  }
+
+  /**
+   * Enables generator integration for `Result.gen`. Yields the error result to short-circuit execution.
+   *
+   * @template T - The potential success type
+   * @returns `never` (short-circuits generator execution via `yield`)
+   *
+   * @example
+   * ```typescript
+   * const result = createError("failed");
+   * const val = yield* result; // short-circuits execution in Result.gen
+   * ```
+   */
+  *[Symbol.iterator](): Generator<ErrorResult<E>, never, unknown> {
+    yield this
+    /* c8 ignore next */
+    throw new Error('Unreachable')
   }
 }
 
@@ -540,6 +770,44 @@ export const Result = {
       return createSuccess(fn())
     } catch (e) {
       return createError(errorMapper ? errorMapper(e) : e) as SuccessOrError<T, E>
+    }
+  },
+
+  /**
+   * Wraps an asynchronous function that may reject/throw into a Result-returning function.
+   *
+   * @template T The return type of the async function
+   * @template E The error type (defaults to unknown)
+   * @template A The arguments array type of the wrapped function
+   * @param fn The async function to wrap
+   * @param errorMapper Optional function to transform caught errors
+   * @returns A function that returns a Promise resolving to a SuccessOrError
+   *
+   * @example
+   * ```typescript
+   * const safeFetchUser = Result.fromAsyncThrowable(
+   *   async (id: number) => {
+   *     const res = await fetch(`/api/users/${id}`)
+   *     if (!res.ok) throw new Error('Failed to fetch')
+   *     return res.json()
+   *   },
+   *   (e) => ({ errorCode: 'FetchError' as const, cause: String(e) })
+   * )
+   *
+   * const result = await safeFetchUser(1)
+   * ```
+   */
+  fromAsyncThrowable<T, E = unknown, A extends unknown[] = unknown[]>(
+    fn: (...args: A) => Promise<T>,
+    errorMapper?: (error: unknown) => E
+  ): (...args: A) => Promise<SuccessOrError<T, E>> {
+    return async (...args: A): Promise<SuccessOrError<T, E>> => {
+      try {
+        const value = await fn(...args)
+        return createSuccess(value)
+      } catch (e) {
+        return createError(errorMapper ? errorMapper(e) : e) as SuccessOrError<T, E>
+      }
     }
   },
 
@@ -737,5 +1005,40 @@ export const Result = {
    */
   isResult<T = unknown, E = unknown>(value: unknown): value is SuccessOrError<T, E> {
     return value instanceof SuccessResult || value instanceof ErrorResult
+  },
+
+  /**
+   * Executes a generator function whose body delegates to `SuccessOrError` values with `yield*`.
+   * Each yielded success value is unwrapped and fed back into the generator, and the first error
+   * result is returned immediately without continuing execution.
+   *
+   * @template R - The final return type produced by the generator.
+   * @template T - The success value type yielded and sent back into the generator.
+   * @template E - The error type carried by `ErrorResult`.
+   * @param fn - A generator function that delegates to `SuccessOrError` values using `yield*`.
+   * @returns A `SuccessResult<R>` when the generator completes successfully, or the first `ErrorResult<E>`.
+   *
+   * @example
+   * ```ts
+   * const combined = Result.gen(function* () {
+   *   const user = yield* fetchUser(1)
+   *   const config = yield* fetchConfig(user.role)
+   *   return { user, config }
+   * })
+   * ```
+   */
+  gen<T, E = never>(fn: () => Generator<SuccessOrError<T, E>, T, T>): SuccessOrError<T, E> {
+    const iterator = fn()
+    let state = iterator.next()
+
+    while (!state.done) {
+      const result = state.value
+      if (result.isError()) {
+        return result
+      }
+      state = iterator.next(result.unwrap())
+    }
+
+    return createSuccess(state.value)
   },
 } as const
