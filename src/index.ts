@@ -602,7 +602,7 @@ export class ErrorResult<E> {
    * @example
    * ```typescript
    * const result = createError("failed");
-   * result.tapError(err => console.error(err)); // logs "failed"
+   * result.inspectError(err => console.error(err)); // logs "failed"
    * ```
    */
   inspectError(fn: (error: E) => void): this {

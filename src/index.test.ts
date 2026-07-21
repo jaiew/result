@@ -198,6 +198,39 @@ describe('Result Utility Library Suite', () => {
       expect(result.isError()).toBe(true)
       expect(result.unwrapOrElse((err) => err)).toBe('step_1_failed')
     })
+
+    it('should correctly infer and handle heterogeneous result types in Result.gen', () => {
+      type User = { id: number; name: string }
+      type Role = { roleId: string; permissions: string[] }
+      type CustomError = { code: string }
+
+      const getUser = (id: number): SuccessOrError<User, CustomError> =>
+        createSuccess({ id, name: 'Alice' })
+
+      const getRole = (user: User): SuccessOrError<Role, CustomError> =>
+        createSuccess({ roleId: `role_for_${user.id}`, permissions: ['read', 'write'] })
+
+      const combinedResult = Result.gen(function* () {
+        // 1st yield: SuccessResult<User> -> yields User
+        const user: User = yield* getUser(1)
+
+        // 2nd yield: SuccessResult<Role> -> yields Role (heterogeneous type step)
+        const role: Role = yield* getRole(user)
+
+        return {
+          userId: user.id,
+          roleId: role.roleId,
+          permissions: role.permissions,
+        }
+      })
+
+      expect(combinedResult.isSuccess()).toBe(true)
+      expect(combinedResult.unwrap()).toEqual({
+        userId: 1,
+        roleId: 'role_for_1',
+        permissions: ['read', 'write'],
+      })
+    })
   })
 
   describe('Pattern Matching', () => {

@@ -90,22 +90,22 @@ const error = createError({ errorCode: 'NotFound', message: 'User not found' });
 
 The union type `SuccessOrError<T, E>` provides the following instance pipeline behaviors:
 
-| Method                           | Description                                                                                 |
-|----------------------------------|---------------------------------------------------------------------------------------------|
-| **`isSuccess()`**                | Returns `true` if the operation succeeded, refining the type instance safely.               |
-| **`isError()`**                  | Returns `true` if the operation failed, refining the type instance safely.                  |
-| **`map(fn)`**                    | Transforms the successful inner value. Ignored if the result is an error.                   |
-| **`mapAsync(fn)`**               | Transforms the success value using an asynchronous mapping function.                        |
-| **`mapError(fn)`**               | Transforms the error payload. Ignored if the result is a success.                           |
-| **`flatMap(fn)`**                | Chains another operations that returns a `SuccessResult`, avoiding nested tracking layouts. |
-| **`flatMapAsync(fn)`**           | Chains an asynchronous operation that returns a SuccessResult.                              |
-| **`inspect(fn)`**                | Executes a side-effect callback with the success value without modifying the Result.        |
-| **`inspectError(fn)`**           | Executes a side-effect callback with the error value without modifying the Result.          |
-| **`filter(predicate, errorFn)`** | Converts a SuccessResult into an ErrorResult if the predicate evaluates to false.           |           
-| **`match(handlers)`**            | Pattern matches simultaneously on success and error workflows.                              |
-| **`unwrap()`**                   | Extracts the success payload or throws a descriptive runtime exception if an error occurs.  |
-| **`unwrapOr(fallback)`**         | Extracts the success value or returns a provided fallback default.                          |
-| **`unwrapOrElse(fn)`**           | Extracts the success value or computes a fallback dynamically from the error metadata.      |
+| Method                           | Description                                                                                |
+|----------------------------------|--------------------------------------------------------------------------------------------|
+| **`isSuccess()`**                | Returns `true` if the operation succeeded, refining the type instance safely.              |
+| **`isError()`**                  | Returns `true` if the operation failed, refining the type instance safely.                 |
+| **`map(fn)`**                    | Transforms the successful inner value. Ignored if the result is an error.                  |
+| **`mapAsync(fn)`**               | Transforms the success value using an asynchronous mapping function.                       |
+| **`mapError(fn)`**               | Transforms the error payload. Ignored if the result is a success.                          |
+| **`flatMap(fn)`**                | Chains another operation that returns a `SuccessResult`, avoiding nested tracking layouts. |
+| **`flatMapAsync(fn)`**           | Chains an asynchronous operation that returns a SuccessResult.                             |
+| **`inspect(fn)`**                | Executes a side-effect callback with the success value without modifying the Result.       |
+| **`inspectError(fn)`**           | Executes a side-effect callback with the error value without modifying the Result.         |
+| **`filter(predicate, errorFn)`** | Converts a SuccessResult into an ErrorResult if the predicate evaluates to false.          |           
+| **`match(handlers)`**            | Pattern matches simultaneously on success and error workflows.                             |
+| **`unwrap()`**                   | Extracts the success payload or throws a descriptive runtime exception if an error occurs. |
+| **`unwrapOr(fallback)`**         | Extracts the success value or returns a provided fallback default.                         |
+| **`unwrapOrElse(fn)`**           | Extracts the success value or computes a fallback dynamically from the error metadata.     |
 
 ---
 
@@ -134,10 +134,11 @@ const validAge = ageResult.filter(
 );
 
 console.log(validAge.isError()); // true
-console.log(validAge.unwrapErr()); // "User age (16) does not meet the minimum requirement of 18."
+console.log(validAge.unwrapOrElse(err => err)); // "User age (16) does not meet the minimum requirement of 18."
 ```
 
 #### Async Method Chaining (`mapAsync` & `flatMapAsync`)
+
 Seamlessly pass asynchronous callbacks along pipelines without manually awaiting every stage or nesting promises:
 
 ```typescript
@@ -226,7 +227,7 @@ const safeFetchJson = Result.fromAsyncThrowable(
 )
 
 // 2. Call the safe function without needing try/catch blocks
-const result = await safeFetchJson('[https://api.example.com/data](https://api.example.com/data)')
+const result = await safeFetchJson('https://api.example.com/data')
 
 if (result.isSuccess()) {
     console.log('Data:', result.value)
