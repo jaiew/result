@@ -26,5 +26,4 @@ jobs:
         run: npm ci
 
       - name: Publish to npm
-        if: ${{ steps.release.outputs.release_created }}
         run: npm publish --access public
