@@ -3,23 +3,23 @@
  *
  * @example Basic usage
  * ```typescript
- * import { Result, createSuccess, createError, type SuccessOrError } from '@jaiew/result';
+ * import { Result, ok, err, type Result } from '@jaiew/result';
  *
  * type User = { id: number; name: string };
  * type FetchError = { errorCode: 'NetworkError' | 'NotFound' };
  *
- * async function fetchUser(id: number): Promise<SuccessOrError<User, FetchError>> {
+ * async function fetchUser(id: number): Promise<Result<User, FetchError>> {
  *   try {
  *     const res = await fetch(`/api/users/${id}`);
- *     if (!res.ok) return createError({ errorCode: 'NotFound' });
- *     return createSuccess(await res.json());
+ *     if (!res.ok) return err({ errorCode: 'NotFound' });
+ *     return ok(await res.json());
  *   } catch {
- *     return createError({ errorCode: 'NetworkError' });
+ *     return err({ errorCode: 'NetworkError' });
  *   }
  * }
  *
  * const result = await fetchUser(1);
- * if (result.isSuccess()) {
+ * if (result.isOk()) {
  *   console.log(result.value.name);
  * } else {
  *   console.error(result.error.errorCode);
@@ -34,12 +34,12 @@
  *
  * @example
  * ```typescript
- * const success = createSuccess({ id: 1, name: 'John' });
- * console.log(success.isSuccess()); // true
+ * const success = ok({ id: 1, name: 'John' });
+ * console.log(success.isOk()); // true
  * console.log(success.value.name); // 'John'
  * ```
  */
-export class SuccessResult<T> {
+export class OkResult<T> {
   readonly kind = 'success' as const
   readonly value: T
 
@@ -54,13 +54,13 @@ export class SuccessResult<T> {
    * @example
    * ```typescript
    * const result = await fetchUser(1);
-   * if (result.isSuccess()) {
+   * if (result.isOk()) {
    *   // TypeScript knows result.value exists here
    *   console.log(result.value);
    * }
    * ```
    */
-  isSuccess(): this is SuccessResult<T> {
+  isOk(): this is OkResult<T> {
     return true
   }
 
@@ -70,13 +70,13 @@ export class SuccessResult<T> {
    * @example
    * ```typescript
    * const result = await fetchUser(1);
-   * if (result.isError()) {
+   * if (result.isErr()) {
    *   // TypeScript knows result.error exists here
    *   console.log(result.error);
    * }
    * ```
    */
-  isError(): this is never {
+  isErr(): this is never {
     return false
   }
 
@@ -90,13 +90,13 @@ export class SuccessResult<T> {
    *
    * @example
    * ```typescript
-   * const result = createSuccess({ id: 1, name: 'John' });
+   * const result = ok({ id: 1, name: 'John' });
    * const nameResult = result.map(user => user.name);
    * // nameResult.value === 'John'
    * ```
    */
-  map<U>(fn: (value: T) => U): SuccessResult<U> {
-    return new SuccessResult(fn(this.value))
+  map<U>(fn: (value: T) => U): OkResult<U> {
+    return new OkResult(fn(this.value))
   }
 
   /**
@@ -109,12 +109,12 @@ export class SuccessResult<T> {
    *
    * @example
    * ```typescript
-   * const result = createSuccess(42);
+   * const result = ok(42);
    * const mapped = result.mapError(e => ({ ...e, timestamp: Date.now() }));
    * // mapped.value === 42 (unchanged)
    * ```
    */
-  mapError<F>(_fn: (error: never) => F): SuccessResult<T> {
+  mapError<F>(_fn: (error: never) => F): OkResult<T> {
     return this
   }
 
@@ -134,7 +134,7 @@ export class SuccessResult<T> {
    *   .flatMap(user => validatePermissions(user));
    * ```
    */
-  flatMap<U, F>(fn: (value: T) => SuccessOrError<U, F>): SuccessOrError<U, F> {
+  flatMap<U, F>(fn: (value: T) => Result<U, F>): Result<U, F> {
     return fn(this.value)
   }
 
@@ -143,17 +143,17 @@ export class SuccessResult<T> {
    *
    * @template U - The return type of the async transformation function
    * @param fn - Async function to apply to the success value
-   * @returns A promise resolving to a new `SuccessResult` with the mapped value
+   * @returns A promise resolving to a new `OkResult` with the mapped value
    *
    * @example
    * ```typescript
-   * const result = createSuccess(2);
-   * const asyncResult = await result.mapAsync(async val => val * 2); // SuccessResult(4)
+   * const result = ok(2);
+   * const asyncResult = await result.mapAsync(async val => val * 2); // OkResult(4)
    * ```
    */
-  async mapAsync<U>(fn: (value: T) => Promise<U>): Promise<SuccessResult<U>> {
+  async mapAsync<U>(fn: (value: T) => Promise<U>): Promise<OkResult<U>> {
     const newValue = await fn(this.value)
-    return createSuccess(newValue)
+    return ok(newValue)
   }
 
   /**
@@ -161,18 +161,16 @@ export class SuccessResult<T> {
    *
    * @template U - The success type of the returned Result promise
    * @template E2 - The error type of the returned Result promise
-   * @param fn - Async function returning a `SuccessOrError`
-   * @returns A promise resolving to the resulting `SuccessOrError`
+   * @param fn - Async function returning a `Result`
+   * @returns A promise resolving to the resulting `Result`
    *
    * @example
    * ```typescript
-   * const result = createSuccess("user_123");
+   * const result = ok("user_123");
    * const user = await result.flatMapAsync(async id => fetchUserAsync(id));
    * ```
    */
-  async flatMapAsync<U, E2>(
-    fn: (value: T) => Promise<SuccessOrError<U, E2>>
-  ): Promise<SuccessOrError<U, E2>> {
+  async flatMapAsync<U, E2>(fn: (value: T) => Promise<Result<U, E2>>): Promise<Result<U, E2>> {
     return await fn(this.value)
   }
 
@@ -182,23 +180,20 @@ export class SuccessResult<T> {
    * @template E2 - The type of the error produced if validation fails
    * @param predicate - Function returning true to keep success, or false to convert to error
    * @param errorFactory - Function producing the error value if predicate returns false
-   * @returns The current `SuccessResult` if predicate is true, or a new `ErrorResult` if false
+   * @returns The current `OkResult` if predicate is true, or a new `ErrorResult` if false
    *
    * @example
    * ```typescript
-   * const result = createSuccess(15);
+   * const result = ok(15);
    * const valid = result.filter(
    *   val => val >= 18,
    *   val => `Age ${val} is under 18`
    * ); // ErrorResult("Age 15 is under 18")
    * ```
    */
-  filter<E2>(
-    predicate: (value: T) => boolean,
-    errorFactory: (value: T) => E2
-  ): SuccessOrError<T, E2> {
+  filter<E2>(predicate: (value: T) => boolean, errorFactory: (value: T) => E2): Result<T, E2> {
     if (!predicate(this.value)) {
-      return createError(errorFactory(this.value))
+      return err(errorFactory(this.value))
     }
     return this
   }
@@ -227,11 +222,11 @@ export class SuccessResult<T> {
    * Use with caution - prefer `unwrapOr` or `match` for safer handling.
    *
    * @returns The success value
-   * @throws Never throws for SuccessResult
+   * @throws Never throws for OkResult
    *
    * @example
    * ```typescript
-   * const result = createSuccess(42);
+   * const result = ok(42);
    * const value = result.unwrap(); // 42
    * ```
    */
@@ -248,7 +243,7 @@ export class SuccessResult<T> {
    *
    * @example
    * ```typescript
-   * const result = createSuccess(42);
+   * const result = ok(42);
    * const value = result.unwrapOr(0); // 42
    * ```
    */
@@ -265,7 +260,7 @@ export class SuccessResult<T> {
    *
    * @example
    * ```typescript
-   * const result = createSuccess(42);
+   * const result = ok(42);
    * const value = result.unwrapOrElse(error => {
    *   console.error(error);
    *   return 0;
@@ -280,11 +275,11 @@ export class SuccessResult<T> {
    * Executes a side-effect callback with the success value without modifying the result.
    *
    * @param fn - Function to execute with the success value
-   * @returns The current `SuccessResult` instance
+   * @returns The current `OkResult` instance
    *
    * @example
    * ```typescript
-   * const result = createSuccess(42);
+   * const result = ok(42);
    * result.inspect(value => console.log(value)); // logs 42
    * ```
    */
@@ -294,15 +289,15 @@ export class SuccessResult<T> {
   }
 
   /**
-   * No-op on `SuccessResult`. Does not execute the callback.
+   * No-op on `OkResult`. Does not execute the callback.
    *
    * @template E - The potential error type
    * @param _fn - Function to execute with the error (not called for success)
-   * @returns The current `SuccessResult` instance
+   * @returns The current `OkResult` instance
    *
    * @example
    * ```typescript
-   * const result = createSuccess(42);
+   * const result = ok(42);
    * result.inspectError(err => console.error(err)); // does nothing
    * ```
    */
@@ -335,9 +330,9 @@ export class SuccessResult<T> {
  *
  * @example
  * ```typescript
- * const error = createError({ errorCode: 'NotFound', message: 'User not found' });
+ * const error = err({ errorCode: 'NotFound', message: 'User not found' });
  * console.log(error.error.errorCode); // 'NotFound'
- * console.log(error.isError()); // true
+ * console.log(error.isErr()); // true
  * ```
  */
 export class ErrorResult<E> {
@@ -354,12 +349,12 @@ export class ErrorResult<E> {
    * @example
    * ```typescript
    * const result = await fetchUser(1);
-   * if (result.isSuccess()) {
+   * if (result.isOk()) {
    *   console.log(result.value);
    * }
    * ```
    */
-  isSuccess(): this is never {
+  isOk(): this is never {
     return false
   }
 
@@ -370,13 +365,13 @@ export class ErrorResult<E> {
    * @example
    * ```typescript
    * const result = await fetchUser(1);
-   * if (result.isError()) {
+   * if (result.isErr()) {
    *   // TypeScript knows result.error exists here
    *   console.log(result.error.errorCode);
    * }
    * ```
    */
-  isError(): this is ErrorResult<E> {
+  isErr(): this is ErrorResult<E> {
     return true
   }
 
@@ -390,7 +385,7 @@ export class ErrorResult<E> {
    *
    * @example
    * ```typescript
-   * const result = createError({ errorCode: 'NotFound' });
+   * const result = err({ errorCode: 'NotFound' });
    * const mapped = result.map(user => user.name);
    * // mapped is still an error with the same error value
    * ```
@@ -408,7 +403,7 @@ export class ErrorResult<E> {
    *
    * @example
    * ```typescript
-   * const result = createError({ errorCode: 'NotFound' });
+   * const result = err({ errorCode: 'NotFound' });
    * const mapped = result.mapError(e => ({
    *   ...e,
    *   timestamp: Date.now(),
@@ -431,12 +426,12 @@ export class ErrorResult<E> {
    *
    * @example
    * ```typescript
-   * const result = createError({ errorCode: 'InvalidInput' });
+   * const result = err({ errorCode: 'InvalidInput' });
    * const chained = result.flatMap(value => fetchData(value));
    * // chained is still the original error
    * ```
    */
-  flatMap<U, F>(_fn: (value: never) => SuccessOrError<U, F>): ErrorResult<E> {
+  flatMap<U, F>(_fn: (value: never) => Result<U, F>): ErrorResult<E> {
     return this
   }
 
@@ -449,7 +444,7 @@ export class ErrorResult<E> {
    *
    * @example
    * ```typescript
-   * const result = createError("network error");
+   * const result = err("network error");
    * const mapped = await result.mapAsync(async val => val * 2); // ErrorResult("network error")
    * ```
    */
@@ -467,12 +462,12 @@ export class ErrorResult<E> {
    *
    * @example
    * ```typescript
-   * const result = createError("network error");
+   * const result = err("network error");
    * const flatMapped = await result.flatMapAsync(async id => fetchUserAsync(id)); // ErrorResult("network error")
    * ```
    */
   async flatMapAsync<U = never, E2 = never>(
-    _fn: (value: never) => Promise<SuccessOrError<U, E2>>
+    _fn: (value: never) => Promise<Result<U, E2>>
   ): Promise<ErrorResult<E>> {
     return this
   }
@@ -488,7 +483,7 @@ export class ErrorResult<E> {
    *
    * @example
    * ```typescript
-   * const result = createError("initial error");
+   * const result = err("initial error");
    * const filtered = result.filter(
    *   val => val > 0,
    *   () => "invalid"
@@ -530,7 +525,7 @@ export class ErrorResult<E> {
    *
    * @example
    * ```typescript
-   * const result = createError({ errorCode: 'NotFound' });
+   * const result = err({ errorCode: 'NotFound' });
    * result.unwrap(); // Throws: "Called unwrap() on ErrorResult: {\"errorCode\":\"NotFound\"}"
    * ```
    */
@@ -547,7 +542,7 @@ export class ErrorResult<E> {
    *
    * @example
    * ```typescript
-   * const result = createError({ errorCode: 'NotFound' });
+   * const result = err({ errorCode: 'NotFound' });
    * const value = result.unwrapOr({ id: 0, name: 'Guest' });
    * // value === { id: 0, name: 'Guest' }
    * ```
@@ -565,7 +560,7 @@ export class ErrorResult<E> {
    *
    * @example
    * ```typescript
-   * const result = createError({ errorCode: 'NotFound', userId: 123 });
+   * const result = err({ errorCode: 'NotFound', userId: 123 });
    * const value = result.unwrapOrElse(error => {
    *   logError(error);
    *   return { id: error.userId, name: 'Unknown' };
@@ -585,7 +580,7 @@ export class ErrorResult<E> {
    *
    * @example
    * ```typescript
-   * const result = createError("failed");
+   * const result = err("failed");
    * result.inspect(value => console.log(value)); // does nothing
    * ```
    */
@@ -601,7 +596,7 @@ export class ErrorResult<E> {
    *
    * @example
    * ```typescript
-   * const result = createError("failed");
+   * const result = err("failed");
    * result.inspectError(err => console.error(err)); // logs "failed"
    * ```
    */
@@ -637,29 +632,29 @@ export class ErrorResult<E> {
  *
  * @example
  * ```typescript
- * type ApiResult = SuccessOrError<User, { errorCode: 'NotFound' | 'Forbidden' }>;
+ * type ApiResult = Result<User, { errorCode: 'NotFound' | 'Forbidden' }>;
  *
  * async function getUser(id: number): Promise<ApiResult> {
  *   // ...
  * }
  * ```
  */
-export type SuccessOrError<T, E> = SuccessResult<T> | ErrorResult<E>
+export type Result<T, E> = OkResult<T> | ErrorResult<E>
 
 /**
  * Creates a success result containing the provided value.
  *
  * @template T - The type of the success value
  * @param value - The success value
- * @returns A SuccessResult containing the value
+ * @returns A OkResult containing the value
  *
  * @example
  * ```typescript
- * const result = createSuccess({ id: 1, name: 'John' });
+ * const result = ok({ id: 1, name: 'John' });
  * ```
  */
-export function createSuccess<T>(value: T): SuccessResult<T> {
-  return new SuccessResult(value)
+export function ok<T>(value: T): OkResult<T> {
+  return new OkResult(value)
 }
 
 /**
@@ -671,11 +666,75 @@ export function createSuccess<T>(value: T): SuccessResult<T> {
  *
  * @example
  * ```typescript
- * const result = createError({ errorCode: 'NotFound', message: 'User not found' });
+ * const result = err({ errorCode: 'NotFound', message: 'User not found' });
  * ```
  */
-export function createError<E>(error: E): ErrorResult<E> {
+export function err<E>(error: E): ErrorResult<E> {
   return new ErrorResult(error)
+}
+
+/**
+ * Executes a function that may throw or reject, catching any caught error
+ * and wrapping the result in a `Result`.
+ *
+ * Automatically handles both synchronous and asynchronous functions based on whether
+ * the returned value is a Promise / Thenable.
+ *
+ * @template T The success value type.
+ * @template E The error value type (defaults to `unknown`).
+ *
+ * @param fn A synchronous or asynchronous function to execute safely.
+ * @param errorMapper Optional mapping function to transform caught errors into type `E`.
+ * @returns A `Result<T, E>` if `fn` is synchronous, or a `Promise<Result<T, E>>` if `fn` is asynchronous.
+ *
+ * @example Synchronous execution
+ * ```ts
+ * const parsed = tryFn(
+ *   () => JSON.parse(input),
+ *   (err) => 'INVALID_JSON'
+ * )
+ * // Returns: Result<any, string>
+ * ```
+ *
+ * @example Asynchronous execution
+ * ```ts
+ * const res = await tryFn(
+ *   async () => fetchUser(id),
+ *   (err) => 'FETCH_ERROR'
+ * )
+ * // Returns: Promise<Result<User, string>>
+ * ```
+ */
+export function tryFn<T, E = unknown>(
+  fn: () => T extends Promise<unknown> ? never : T,
+  errorMapper?: (error: unknown) => E
+): Result<T, E>
+export function tryFn<T, E = unknown>(
+  fn: () => Promise<T>,
+  errorMapper?: (error: unknown) => E
+): Promise<Result<T, E>>
+export function tryFn<T, E = unknown>(
+  fn: () => T | Promise<T>,
+  errorMapper?: (error: unknown) => E
+): Result<T, E> | Promise<Result<T, E>> {
+  try {
+    const result = fn()
+
+    // Check if the return value is a Promise / Thenable
+    if (
+      result !== null &&
+      (typeof result === 'object' || typeof result === 'function') &&
+      typeof (result as Promise<T>).then === 'function'
+    ) {
+      return (result as Promise<T>)
+        .then((value) => ok(value))
+        .catch((e) => err(errorMapper ? errorMapper(e) : e)) as Promise<Result<T, E>>
+    }
+
+    return ok(result as T)
+  } catch (e) {
+    return err(errorMapper ? errorMapper(e) : (e as E))
+  }
 }
 
 /**
@@ -703,12 +762,12 @@ export const Result = {
   /**
    * Creates a success result.
    */
-  createSuccess,
+  ok,
 
   /**
    * Creates an error result.
    */
-  createError,
+  err,
 
   /**
    * Wraps a Promise into a Result, catching any thrown errors.
@@ -726,7 +785,7 @@ export const Result = {
    *   (e) => ({ errorCode: 'FetchError' as const, cause: e })
    * );
    *
-   * if (result.isSuccess()) {
+   * if (result.isOk()) {
    *   console.log(result.value);
    * }
    * ```
@@ -734,82 +793,26 @@ export const Result = {
   async fromPromise<T, E = unknown>(
     promise: Promise<T>,
     errorMapper?: (error: unknown) => E
-  ): Promise<SuccessOrError<T, E>> {
+  ): Promise<Result<T, E>> {
     try {
       const value = await promise
-      return createSuccess(value)
+      return ok(value)
     } catch (e) {
-      return createError(errorMapper ? errorMapper(e) : e) as SuccessOrError<T, E>
+      return err(errorMapper ? errorMapper(e) : e) as Result<T, E>
     }
   },
 
   /**
-   * Wraps a function that may throw into a Result.
+   * Unified wrapper for executing code that may throw or reject, automatically
+   * detecting synchronous vs. asynchronous execution. Alias for {@link tryFn}.
    *
-   * @template T - The return type of the function
-   * @template E - The error type (defaults to unknown)
-   * @param fn - The function to wrap
-   * @param errorMapper - Optional function to transform caught errors
-   * @returns A Result containing either the return value or the error
+   * @see {@link tryFn} for direct standalone usage.
    *
    * @example
-   * ```typescript
-   * const result = Result.fromThrowable(
-   *   () => JSON.parse(userInput),
-   *   (e) => ({ errorCode: 'InvalidJSON' as const, message: String(e) })
-   * );
-   *
-   * const data = result.unwrapOr({ default: true });
-   * ```
+   * const syncRes = Result.try(() => JSON.parse('{"a": 1}'))
+   * const asyncRes = await Result.try(async () => fetch('/api'))
    */
-  fromThrowable<T, E = unknown>(
-    fn: () => T,
-    errorMapper?: (error: unknown) => E
-  ): SuccessOrError<T, E> {
-    try {
-      return createSuccess(fn())
-    } catch (e) {
-      return createError(errorMapper ? errorMapper(e) : e) as SuccessOrError<T, E>
-    }
-  },
-
-  /**
-   * Wraps an asynchronous function that may reject/throw into a Result-returning function.
-   *
-   * @template T The return type of the async function
-   * @template E The error type (defaults to unknown)
-   * @template A The arguments array type of the wrapped function
-   * @param fn The async function to wrap
-   * @param errorMapper Optional function to transform caught errors
-   * @returns A function that returns a Promise resolving to a SuccessOrError
-   *
-   * @example
-   * ```typescript
-   * const safeFetchUser = Result.fromAsyncThrowable(
-   *   async (id: number) => {
-   *     const res = await fetch(`/api/users/${id}`)
-   *     if (!res.ok) throw new Error('Failed to fetch')
-   *     return res.json()
-   *   },
-   *   (e) => ({ errorCode: 'FetchError' as const, cause: String(e) })
-   * )
-   *
-   * const result = await safeFetchUser(1)
-   * ```
-   */
-  fromAsyncThrowable<T, E = unknown, A extends unknown[] = unknown[]>(
-    fn: (...args: A) => Promise<T>,
-    errorMapper?: (error: unknown) => E
-  ): (...args: A) => Promise<SuccessOrError<T, E>> {
-    return async (...args: A): Promise<SuccessOrError<T, E>> => {
-      try {
-        const value = await fn(...args)
-        return createSuccess(value)
-      } catch (e) {
-        return createError(errorMapper ? errorMapper(e) : e) as SuccessOrError<T, E>
-      }
-    }
-  },
+  try: tryFn,
 
   /**
    * Combines multiple Results into a single Result containing an array of values.
@@ -827,7 +830,7 @@ export const Result = {
    *
    * const combined = Result.all([userResult, postsResult, settingsResult]);
    *
-   * if (combined.isSuccess()) {
+   * if (combined.isOk()) {
    *   const [user, posts, settings] = combined.value;
    *   // All three succeeded
    * } else {
@@ -836,23 +839,23 @@ export const Result = {
    * }
    * ```
    */
-  all<T extends readonly SuccessOrError<unknown, unknown>[]>(
+  all<T extends readonly Result<unknown, unknown>[]>(
     results: T
-  ): SuccessOrError<
+  ): Result<
     {
-      -readonly [K in keyof T]: T[K] extends SuccessOrError<infer U, unknown> ? U : never
+      -readonly [K in keyof T]: T[K] extends Result<infer U, unknown> ? U : never
     },
-    T[number] extends SuccessOrError<unknown, infer E> ? E : never
+    T[number] extends Result<unknown, infer E> ? E : never
   > {
     const values: unknown[] = []
     for (const result of results) {
-      if (result.isError()) {
-        return result as ErrorResult<T[number] extends SuccessOrError<unknown, infer E> ? E : never>
+      if (result.isErr()) {
+        return result as ErrorResult<T[number] extends Result<unknown, infer E> ? E : never>
       }
       values.push(result.value)
     }
-    return createSuccess(values) as SuccessResult<{
-      -readonly [K in keyof T]: T[K] extends SuccessOrError<infer U, unknown> ? U : never
+    return ok(values) as OkResult<{
+      -readonly [K in keyof T]: T[K] extends Result<infer U, unknown> ? U : never
     }>
   },
 
@@ -877,11 +880,11 @@ export const Result = {
    * ]);
    *
    * const settled = Result.allSettled(userResults);
-   * // settled.isSuccess() is always true
-   * const results = settled.value; // Array of SuccessOrError<User, FetchError>
+   * // settled.isOk() is always true
+   * const results = settled.value; // Array of Result<User, FetchError>
    *
    * results.forEach((result, index) => {
-   *   if (result.isSuccess()) {
+   *   if (result.isOk()) {
    *     console.log(`User ${index}:`, result.value);
    *   } else {
    *     console.log(`User ${index} failed:`, result.error);
@@ -893,17 +896,17 @@ export const Result = {
    * ```typescript
    * // Compare with all() behavior
    * const results = [
-   *   createSuccess(1),
-   *   createError('error A'),
-   *   createError('error B'),
+   *   ok(1),
+   *   err('error A'),
+   *   err('error B'),
    * ];
    *
    * Result.all(results);        // ErrorResult - short-circuits on first error
-   * Result.allSettled(results); // SuccessResult with 3-item array (all Results)
+   * Result.allSettled(results); // OkResult with 3-item array (all Results)
    * ```
    */
-  allSettled<T extends readonly SuccessOrError<unknown, unknown>[]>(results: T): SuccessResult<T> {
-    return createSuccess(results)
+  allSettled<T extends readonly Result<unknown, unknown>[]>(results: T): OkResult<T> {
+    return ok(results)
   },
 
   /**
@@ -938,9 +941,9 @@ export const Result = {
    * ```typescript
    * // Distinguish successes from failures without checking length
    * const userResults = [
-   *   createSuccess({ id: 1, name: 'Alice' }),
-   *   createError({ errorCode: 'NotFound' }),
-   *   createSuccess({ id: 3, name: 'Charlie' }),
+   *   ok({ id: 1, name: 'Alice' }),
+   *   err({ errorCode: 'NotFound' }),
+   *   ok({ id: 3, name: 'Charlie' }),
    * ];
    *
    * const partitioned = Result.partition(userResults);
@@ -950,38 +953,38 @@ export const Result = {
    * // errors = [{ errorCode: 'NotFound' }]
    * ```
    */
-  partition<T extends readonly SuccessOrError<unknown, unknown>[]>(
+  partition<T extends readonly Result<unknown, unknown>[]>(
     results: T
-  ): SuccessResult<{
+  ): OkResult<{
     values: {
-      -readonly [K in keyof T]: T[K] extends SuccessOrError<infer U, unknown> ? U : never
+      -readonly [K in keyof T]: T[K] extends Result<infer U, unknown> ? U : never
     }
-    errors: Array<T[number] extends SuccessOrError<unknown, infer E> ? E : never>
+    errors: Array<T[number] extends Result<unknown, infer E> ? E : never>
   }> {
     const values: unknown[] = []
     const errors: unknown[] = []
 
     for (const result of results) {
-      if (result.isSuccess()) {
+      if (result.isOk()) {
         values.push(result.value)
       } else {
         errors.push(result.error)
       }
     }
 
-    return createSuccess({
+    return ok({
       values,
       errors,
-    }) as SuccessResult<{
+    }) as OkResult<{
       values: {
-        -readonly [K in keyof T]: T[K] extends SuccessOrError<infer U, unknown> ? U : never
+        -readonly [K in keyof T]: T[K] extends Result<infer U, unknown> ? U : never
       }
-      errors: Array<T[number] extends SuccessOrError<unknown, infer E> ? E : never>
+      errors: Array<T[number] extends Result<unknown, infer E> ? E : never>
     }>
   },
 
   /**
-   * Checks if a value is a Result (either SuccessResult or ErrorResult).
+   * Checks if a value is a Result (either OkResult or ErrorResult).
    *
    * Type  parameters are not validated at runtime — use them only when
    * the shape of T and E is known at the call site.
@@ -997,26 +1000,26 @@ export const Result = {
    * const maybeResult = someFunction();
    * if (Result.isResult(maybeResult)) {
    *   // TypeScript knows this is a Result
-   *   if (maybeResult.isSuccess()) {
+   *   if (maybeResult.isOk()) {
    *     console.log(maybeResult.value);
    *   }
    * }
    * ```
    */
-  isResult<T = unknown, E = unknown>(value: unknown): value is SuccessOrError<T, E> {
-    return value instanceof SuccessResult || value instanceof ErrorResult
+  isResult<T = unknown, E = unknown>(value: unknown): value is Result<T, E> {
+    return value instanceof OkResult || value instanceof ErrorResult
   },
 
   /**
-   * Executes a generator function whose body delegates to `SuccessOrError` values with `yield*`.
+   * Executes a generator function whose body delegates to `Result` values with `yield*`.
    * Each yielded success value is unwrapped and fed back into the generator, and the first error
    * result is returned immediately without continuing execution.
    *
    * @template R - The final return type produced by the generator.
    * @template T - The success value type yielded and sent back into the generator.
    * @template E - The error type carried by `ErrorResult`.
-   * @param fn - A generator function that delegates to `SuccessOrError` values using `yield*`.
-   * @returns A `SuccessResult<R>` when the generator completes successfully, or the first `ErrorResult<E>`.
+   * @param fn - A generator function that delegates to `Result` values using `yield*`.
+   * @returns A `OkResult<R>` when the generator completes successfully, or the first `ErrorResult<E>`.
    *
    * @example
    * ```ts
@@ -1027,18 +1030,18 @@ export const Result = {
    * })
    * ```
    */
-  gen<T, E = never>(fn: () => Generator<SuccessOrError<T, E>, T, T>): SuccessOrError<T, E> {
+  gen<T, E = never>(fn: () => Generator<Result<T, E>, T, T>): Result<T, E> {
     const iterator = fn()
     let state = iterator.next()
 
     while (!state.done) {
       const result = state.value
-      if (result.isError()) {
+      if (result.isErr()) {
         return result
       }
       state = iterator.next(result.unwrap())
     }
 
-    return createSuccess(state.value)
+    return ok(state.value)
   },
 } as const
