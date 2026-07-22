@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createSuccess, createError, Result } from './index.js'
+import { createSuccess, createError, Result, SuccessOrError } from './index.js'
 
 describe('Result Utility Library Suite', () => {
   describe('Basic Creation and Type Guards', () => {
