@@ -136,12 +136,16 @@ Full detail: [`docs/WORKFLOW.md`](docs/WORKFLOW.md). Summary:
   may have shipped since.
 - **Dependabot** is already configured (`.github/dependabot.yml` — npm +
   github-actions ecosystems, weekly). Use the `check-dependabot-alerts`
-  skill to triage open alerts/PRs and verify an update against the real
-  build (`lint` + `format:check` + `build` + `test:coverage`), not just
-  Dependabot's own CI badge. Every current Dependabot-managed dependency
-  here is a `devDependency` (this repo has zero runtime deps — see
-  "Architecture" above), which lowers the blast radius of a bad bump but
-  doesn't remove the need to verify it.
+  skill to triage open alerts/PRs and confirm CI (`lint` + `format:check`
+  + `build` + `test:coverage`) is green on GitHub's own runner before
+  merging — that's the real build gate; there's no need to re-run it
+  locally against an unreviewed branch. Every current npm-ecosystem
+  Dependabot-managed dependency here is a `devDependency` (this repo has
+  zero runtime deps — see "Architecture" above), which lowers the blast
+  radius of a bad bump but doesn't remove the need to verify it;
+  github-actions-ecosystem updates (workflow action pins) aren't npm
+  dependencies and are verified by re-running the affected workflow
+  instead.
 - **CodeQL** (`.github/workflows/codeql.yml`) runs separately as a
   security scan — its findings aren't Dependabot alerts and aren't
   covered by `check-dependabot-alerts`; triage a CodeQL finding on its
