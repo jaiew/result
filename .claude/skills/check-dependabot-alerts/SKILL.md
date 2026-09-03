@@ -33,15 +33,19 @@ workflow instead.
    ```bash
    gh api repos/jaiew/result/dependabot/alerts --paginate \
      --jq '.[] | select(.state=="open") | {number, severity: .security_advisory.severity, package: .dependency.package.name, summary: .security_advisory.summary}'
-   gh pr list --repo jaiew/result --app dependabot --json number,title,url,createdAt
+   gh pr list --repo jaiew/result --app dependabot --limit 100 --json number,title,url,createdAt
    ```
 2. **Triage by severity, not arrival order.**
    - **Critical** — urgent regardless of the 2-day bump cooldown in
      `CLAUDE.md`. If a fix PR already exists, go straight to step 3. If
      not, bump by hand on a branch rather than waiting for Dependabot's
-     next scheduled run — `npm install <pkg>@<fixed-version> --save-dev`
-     for the npm ecosystem, or edit the pinned version/SHA directly in
-     the workflow YAML for the github-actions ecosystem.
+     next scheduled run: for the npm ecosystem, `npm install
+     <pkg>@<fixed-version> --save-dev --ignore-scripts` in a disposable,
+     credential-free environment (the just-published fix version is
+     itself unvetted, and `npm install` runs its lifecycle scripts by
+     default), then let CI (step 3) validate the result; for the
+     github-actions ecosystem, edit the pinned version/SHA directly in
+     the workflow YAML instead.
    - **High/Medium/Low** — can wait for Dependabot's own PR and the
      normal cooldown.
    For each open version-update PR:
