@@ -35,6 +35,7 @@ workflow instead.
      --jq '.[] | select(.state=="open") | {number, severity: .security_advisory.severity, package: .dependency.package.name, summary: .security_advisory.summary}'
    gh pr list --repo jaiew/result --app dependabot --limit 100 --json number,title,url,createdAt
    ```
+
 2. **Triage by severity, not arrival order.**
    - **Critical** — urgent regardless of the 2-day bump cooldown in
      `CLAUDE.md`. If a fix PR already exists, go straight to step 3. If
